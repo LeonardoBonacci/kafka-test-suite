@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.corelogic.idap.pipeline.kafkatestsuite.zookeeper;
+package io.karengryg.kafkatestsuite.zookeeper;
 
 import org.apache.curator.test.TestingServer;
 import org.slf4j.Logger;

@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.corelogic.idap.pipeline.kafkatestsuite.kafka;
+package io.karengryg.kafkatestsuite.kafka;
 
-import com.corelogic.idap.pipeline.kafkatestsuite.zookeeper.ZooKeeperEmbedded;
+import io.karengryg.kafkatestsuite.zookeeper.ZooKeeperEmbedded;
 import io.confluent.kafka.schemaregistry.RestApp;
 import io.confluent.kafka.schemaregistry.avro.AvroCompatibilityLevel;
 import io.confluent.kafka.schemaregistry.rest.SchemaRegistryConfig;
