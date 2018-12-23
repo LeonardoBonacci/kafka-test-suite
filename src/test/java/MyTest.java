@@ -7,21 +7,21 @@ import static org.junit.Assert.assertTrue;
 
 public class MyTest {
 
-    private EmbeddedSingleNodeKafkaCluster sut;
+    private EmbeddedSingleNodeKafkaCluster kafkaCluster;
 
     @Before
     public void setUp() throws Exception {
-        sut = new EmbeddedSingleNodeKafkaCluster();
-        sut.start();
+        kafkaCluster = new EmbeddedSingleNodeKafkaCluster();
+        kafkaCluster.start();
     }
 
     @After
     public void tearDown() {
-        sut.stop();
+        kafkaCluster.stop();
     }
 
     @Test
     public void verifyClusterIsRunning() {
-        assertTrue(sut.isRunning());
+        assertTrue(kafkaCluster.isRunning());
     }
 }
