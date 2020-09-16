@@ -13,9 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.karengryg.kafkatestsuite.kafka;
+package guru.bonacci.kafkatestsuite.kafka;
 
-import io.karengryg.kafkatestsuite.zookeeper.ZooKeeperEmbedded;
 import io.confluent.kafka.schemaregistry.RestApp;
 import io.confluent.kafka.schemaregistry.avro.AvroCompatibilityLevel;
 import io.confluent.kafka.schemaregistry.rest.SchemaRegistryConfig;
@@ -28,6 +27,8 @@ import org.apache.kafka.test.TestUtils;
 import org.junit.rules.ExternalResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import guru.bonacci.kafkatestsuite.zookeeper.ZooKeeperEmbedded;
 
 import java.io.IOException;
 import java.util.Collections;

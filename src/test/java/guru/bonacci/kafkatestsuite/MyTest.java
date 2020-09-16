@@ -1,7 +1,10 @@
-import io.karengryg.kafkatestsuite.kafka.EmbeddedSingleNodeKafkaCluster;
+package guru.bonacci.kafkatestsuite;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import guru.bonacci.kafkatestsuite.kafka.EmbeddedSingleNodeKafkaCluster;
 
 import static org.junit.Assert.assertTrue;
 
