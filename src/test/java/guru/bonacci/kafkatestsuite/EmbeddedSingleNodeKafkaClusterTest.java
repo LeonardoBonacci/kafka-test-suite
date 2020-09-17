@@ -8,7 +8,7 @@ import guru.bonacci.kafkatestsuite.kafka.EmbeddedSingleNodeKafkaCluster;
 
 import static org.junit.Assert.assertTrue;
 
-public class MyTest {
+public class EmbeddedSingleNodeKafkaClusterTest {
 
     private EmbeddedSingleNodeKafkaCluster kafkaCluster;
 

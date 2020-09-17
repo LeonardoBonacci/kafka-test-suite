@@ -1,27 +1,13 @@
-/*
- * Copyright Confluent Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package guru.bonacci.kafkatestsuite.kafka;
 
-import io.confluent.kafka.schemaregistry.RestApp;
-import io.confluent.kafka.schemaregistry.avro.AvroCompatibilityLevel;
-import io.confluent.kafka.schemaregistry.rest.SchemaRegistryConfig;
-import kafka.server.KafkaConfig$;
-import kafka.utils.ZkUtils;
+import java.io.IOException;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
+
 import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
-import org.apache.kafka.common.security.JaasUtils;
 import org.apache.kafka.test.TestCondition;
 import org.apache.kafka.test.TestUtils;
 import org.junit.rules.ExternalResource;
@@ -29,12 +15,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import guru.bonacci.kafkatestsuite.zookeeper.ZooKeeperEmbedded;
-
-import java.io.IOException;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Properties;
-import java.util.Set;
+import io.confluent.kafka.schemaregistry.RestApp;
+import io.confluent.kafka.schemaregistry.avro.AvroCompatibilityLevel;
+import io.confluent.kafka.schemaregistry.rest.SchemaRegistryConfig;
+import kafka.server.KafkaConfig$;
+import scala.collection.JavaConverters;
 
 /**
  * Runs an in-memory, "embedded" Kafka cluster with 1 ZooKeeper instance, 1 Kafka broker, and 1
@@ -47,12 +32,11 @@ public class EmbeddedSingleNodeKafkaCluster extends ExternalResource {
   private static final String KAFKA_SCHEMAS_TOPIC = "_schemas";
   private static final String AVRO_COMPATIBILITY_TYPE = AvroCompatibilityLevel.NONE.name;
 
-  private static final String KAFKASTORE_OPERATION_TIMEOUT_MS = "10000";
+  private static final String KAFKASTORE_OPERATION_TIMEOUT_MS = "60000";
   private static final String KAFKASTORE_DEBUG = "true";
   private static final String KAFKASTORE_INIT_TIMEOUT = "90000";
 
   private ZooKeeperEmbedded zookeeper;
-  private ZkUtils zkUtils = null;
   private KafkaEmbedded broker;
   private RestApp schemaRegistry;
   private final Properties brokerConfig;
@@ -70,8 +54,9 @@ public class EmbeddedSingleNodeKafkaCluster extends ExternalResource {
    *
    * @param brokerConfig Additional broker configuration settings.
    */
-  public EmbeddedSingleNodeKafkaCluster(Properties brokerConfig) {
+  public EmbeddedSingleNodeKafkaCluster(final Properties brokerConfig) {
     this.brokerConfig = new Properties();
+    this.brokerConfig.put(SchemaRegistryConfig.KAFKASTORE_TIMEOUT_CONFIG, KAFKASTORE_OPERATION_TIMEOUT_MS);
     this.brokerConfig.putAll(brokerConfig);
   }
 
@@ -84,20 +69,14 @@ public class EmbeddedSingleNodeKafkaCluster extends ExternalResource {
     zookeeper = new ZooKeeperEmbedded();
     log.debug("ZooKeeper instance is running at {}", zookeeper.connectString());
 
-    zkUtils = ZkUtils.apply(
-        zookeeper.connectString(),
-        30000,
-        30000,
-        JaasUtils.isZkSecurityEnabled());
-
-    Properties effectiveBrokerConfig = effectiveBrokerConfigFrom(brokerConfig, zookeeper);
+    final Properties effectiveBrokerConfig = effectiveBrokerConfigFrom(brokerConfig, zookeeper);
     log.debug("Starting a Kafka instance on port {} ...",
-        effectiveBrokerConfig.getProperty(KafkaConfig$.MODULE$.PortProp()));
+      effectiveBrokerConfig.getProperty(KafkaConfig$.MODULE$.PortProp()));
     broker = new KafkaEmbedded(effectiveBrokerConfig);
     log.debug("Kafka instance is running at {}, connected to ZooKeeper at {}",
-        broker.brokerList(), broker.zookeeperConnect());
+      broker.brokerList(), broker.zookeeperConnect());
 
-    Properties schemaRegistryProps = new Properties();
+    final Properties schemaRegistryProps = new Properties();
 
     schemaRegistryProps.put(SchemaRegistryConfig.KAFKASTORE_TIMEOUT_CONFIG, KAFKASTORE_OPERATION_TIMEOUT_MS);
     schemaRegistryProps.put(SchemaRegistryConfig.DEBUG_CONFIG, KAFKASTORE_DEBUG);
@@ -108,8 +87,8 @@ public class EmbeddedSingleNodeKafkaCluster extends ExternalResource {
     running = true;
   }
 
-  private Properties effectiveBrokerConfigFrom(Properties brokerConfig, ZooKeeperEmbedded zookeeper) {
-    Properties effectiveConfig = new Properties();
+  private Properties effectiveBrokerConfigFrom(final Properties brokerConfig, final ZooKeeperEmbedded zookeeper) {
+    final Properties effectiveConfig = new Properties();
     effectiveConfig.putAll(brokerConfig);
     effectiveConfig.put(KafkaConfig$.MODULE$.ZkConnectProp(), zookeeper.connectString());
     effectiveConfig.put(KafkaConfig$.MODULE$.ZkSessionTimeoutMsProp(), 30 * 1000);
@@ -144,8 +123,8 @@ public class EmbeddedSingleNodeKafkaCluster extends ExternalResource {
         if (schemaRegistry != null) {
           schemaRegistry.stop();
         }
-      } catch (Exception e) {
-        throw new RuntimeException(e);
+      } catch (final Exception fatal) {
+        throw new RuntimeException(fatal);
       }
       if (broker != null) {
         broker.stop();
@@ -154,8 +133,8 @@ public class EmbeddedSingleNodeKafkaCluster extends ExternalResource {
         if (zookeeper != null) {
           zookeeper.stop();
         }
-      } catch (IOException e) {
-        throw new RuntimeException(e);
+      } catch (final IOException fatal) {
+        throw new RuntimeException(fatal);
       }
     } finally {
       running = false;
@@ -165,7 +144,7 @@ public class EmbeddedSingleNodeKafkaCluster extends ExternalResource {
 
   /**
    * This cluster's `bootstrap.servers` value.  Example: `127.0.0.1:9092`.
-   *
+   * <p>
    * You can use this to tell Kafka Streams applications, Kafka producers, and Kafka consumers (new
    * consumer API) how to connect to this cluster.
    */
@@ -176,7 +155,7 @@ public class EmbeddedSingleNodeKafkaCluster extends ExternalResource {
   /**
    * This cluster's ZK connection string aka `zookeeper.connect` in `hostnameOrIp:port` format.
    * Example: `127.0.0.1:2181`.
-   *
+   * <p>
    * You can use this to e.g. tell Kafka consumers (old consumer API) how to connect to this
    * cluster.
    */
@@ -196,8 +175,8 @@ public class EmbeddedSingleNodeKafkaCluster extends ExternalResource {
    *
    * @param topic The name of the topic.
    */
-  public void createTopic(String topic) {
-    createTopic(topic, 1, 1, new Properties());
+  public void createTopic(final String topic) throws InterruptedException {
+    createTopic(topic, 1, (short) 1, Collections.emptyMap());
   }
 
   /**
@@ -207,8 +186,8 @@ public class EmbeddedSingleNodeKafkaCluster extends ExternalResource {
    * @param partitions  The number of partitions for this topic.
    * @param replication The replication factor for (the partitions of) this topic.
    */
-  public void createTopic(String topic, int partitions, int replication) {
-    createTopic(topic, partitions, replication, new Properties());
+  public void createTopic(final String topic, final int partitions, final short replication) throws InterruptedException {
+    createTopic(topic, partitions, replication, Collections.emptyMap());
   }
 
   /**
@@ -219,24 +198,46 @@ public class EmbeddedSingleNodeKafkaCluster extends ExternalResource {
    * @param replication The replication factor for (partitions of) this topic.
    * @param topicConfig Additional topic-level configuration settings.
    */
-  public void createTopic(String topic,
-                          int partitions,
-                          int replication,
-                          Properties topicConfig) {
+  public void createTopic(final String topic,
+                          final int partitions,
+                          final short replication,
+                          final Map<String, String> topicConfig) throws InterruptedException {
+    createTopic(60000L, topic, partitions, replication, topicConfig);
+  }
+
+  /**
+   * Creates a Kafka topic with the given parameters and blocks until all topics got created.
+   *
+   * @param topic       The name of the topic.
+   * @param partitions  The number of partitions for this topic.
+   * @param replication The replication factor for (partitions of) this topic.
+   * @param topicConfig Additional topic-level configuration settings.
+   */
+  public void createTopic(final long timeoutMs,
+                          final String topic,
+                          final int partitions,
+                          final short replication,
+                          final Map<String, String> topicConfig) throws InterruptedException {
     broker.createTopic(topic, partitions, replication, topicConfig);
+
+    if (timeoutMs > 0) {
+      TestUtils.waitForCondition(new TopicCreatedCondition(topic), timeoutMs, "Topics not created after " + timeoutMs + " milli seconds.");
+    }
   }
 
   /**
    * Deletes multiple topics and blocks until all topics got deleted.
    *
    * @param timeoutMs the max time to wait for the topics to be deleted (does not block if {@code <= 0})
-   * @param topics the name of the topics
+   * @param topics    the name of the topics
    */
   public void deleteTopicsAndWait(final long timeoutMs, final String... topics) throws InterruptedException {
     for (final String topic : topics) {
       try {
         broker.deleteTopic(topic);
-      } catch (final UnknownTopicOrPartitionException e) { }
+      } catch (final UnknownTopicOrPartitionException expected) {
+        // indicates (idempotent) success
+      }
     }
 
     if (timeoutMs > 0) {
@@ -257,8 +258,31 @@ public class EmbeddedSingleNodeKafkaCluster extends ExternalResource {
 
     @Override
     public boolean conditionMet() {
-      final Set<String> allTopics = new HashSet<>(scala.collection.JavaConversions.seqAsJavaList(zkUtils.getAllTopics()));
-      return !allTopics.removeAll(deletedTopics);
+      //TODO once KAFKA-6098 is fixed use AdminClient to verify topics have been deleted
+      // The Set returned from JavaConverters.setAsJavaSetConverter does not support the remove
+      // method so we need to continue to wrap in a HashSet
+      final Set<String> allTopicsFromZk = new HashSet<>(
+          JavaConverters.setAsJavaSetConverter(broker.kafkaServer().zkClient().getAllTopicsInCluster()).asJava());
+
+      final Set<String> allTopicsFromBrokerCache = new HashSet<>(
+          JavaConverters.seqAsJavaListConverter(broker.kafkaServer().metadataCache().getAllTopics().toSeq()).asJava());
+
+      return !allTopicsFromZk.removeAll(deletedTopics) && !allTopicsFromBrokerCache.removeAll(deletedTopics);
+    }
+  }
+
+  private final class TopicCreatedCondition implements TestCondition {
+    final String createdTopic;
+
+    private TopicCreatedCondition(final String topic) {
+      createdTopic = topic;
+    }
+
+    @Override
+    public boolean conditionMet() {
+      //TODO once KAFKA-6098 is fixed use AdminClient to verify topics have been deleted
+      return broker.kafkaServer().zkClient().getAllTopicsInCluster().contains(createdTopic) &&
+          broker.kafkaServer().metadataCache().contains(createdTopic);
     }
   }
 
