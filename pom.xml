@@ -6,7 +6,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>guru.bonacci</groupId>
 	<artifactId>kafka-test-suite</artifactId>
-	<version>0.1</version>
+	<version>5.5.1</version>
 
 	<!-- resolves Confluent dependencies -->
 	<repositories>
