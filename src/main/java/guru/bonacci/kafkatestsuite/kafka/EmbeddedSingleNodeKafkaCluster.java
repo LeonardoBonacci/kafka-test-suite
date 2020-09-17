@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import guru.bonacci.kafkatestsuite.zookeeper.ZooKeeperEmbedded;
 import io.confluent.kafka.schemaregistry.RestApp;
 import io.confluent.kafka.schemaregistry.avro.AvroCompatibilityLevel;
+import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import io.confluent.kafka.schemaregistry.rest.SchemaRegistryConfig;
 import kafka.server.KafkaConfig$;
 import scala.collection.JavaConverters;
@@ -28,7 +29,6 @@ import scala.collection.JavaConverters;
 public class EmbeddedSingleNodeKafkaCluster extends ExternalResource {
 
   private static final Logger log = LoggerFactory.getLogger(EmbeddedSingleNodeKafkaCluster.class);
-  private static final int DEFAULT_BROKER_PORT = 0; // 0 results in a random port being selected
   private static final String KAFKA_SCHEMAS_TOPIC = "_schemas";
   private static final String AVRO_COMPATIBILITY_TYPE = AvroCompatibilityLevel.NONE.name;
 
@@ -38,7 +38,9 @@ public class EmbeddedSingleNodeKafkaCluster extends ExternalResource {
 
   private ZooKeeperEmbedded zookeeper;
   private KafkaEmbedded broker;
+  private int brokerPort = 0; // 0 results in a random port being selected
   private RestApp schemaRegistry;
+  private int schemaRegistryPort = 0; // 0 results in a random port being selected
   private final Properties brokerConfig;
   private boolean running;
 
@@ -47,6 +49,22 @@ public class EmbeddedSingleNodeKafkaCluster extends ExternalResource {
    */
   public EmbeddedSingleNodeKafkaCluster() {
     this(new Properties());
+  }
+
+  /**
+   * Convenience constructor to control exposed ports.
+   */
+  public EmbeddedSingleNodeKafkaCluster(int kPort) {
+	    this(kPort, 0);
+  }
+
+  /**
+   * Convenience constructor to control exposed ports.
+   */
+  public EmbeddedSingleNodeKafkaCluster(int kPort, int srPort) {
+	    this(new Properties());
+	    this.brokerPort = kPort;
+	    schemaRegistryPort = srPort;
   }
 
   /**
@@ -74,15 +92,15 @@ public class EmbeddedSingleNodeKafkaCluster extends ExternalResource {
       effectiveBrokerConfig.getProperty(KafkaConfig$.MODULE$.PortProp()));
     broker = new KafkaEmbedded(effectiveBrokerConfig);
     log.debug("Kafka instance is running at {}, connected to ZooKeeper at {}",
-      broker.brokerList(), broker.zookeeperConnect());
+    broker.brokerList(), broker.zookeeperConnect());
 
     final Properties schemaRegistryProps = new Properties();
 
     schemaRegistryProps.put(SchemaRegistryConfig.KAFKASTORE_TIMEOUT_CONFIG, KAFKASTORE_OPERATION_TIMEOUT_MS);
     schemaRegistryProps.put(SchemaRegistryConfig.DEBUG_CONFIG, KAFKASTORE_DEBUG);
     schemaRegistryProps.put(SchemaRegistryConfig.KAFKASTORE_INIT_TIMEOUT_CONFIG, KAFKASTORE_INIT_TIMEOUT);
-
-    schemaRegistry = new RestApp(0, zookeeperConnect(), KAFKA_SCHEMAS_TOPIC, AVRO_COMPATIBILITY_TYPE, schemaRegistryProps);
+ 
+    schemaRegistry = new RestApp(schemaRegistryPort, zookeeperConnect(), KAFKA_SCHEMAS_TOPIC, AVRO_COMPATIBILITY_TYPE, schemaRegistryProps);
     schemaRegistry.start();
     running = true;
   }
@@ -92,7 +110,7 @@ public class EmbeddedSingleNodeKafkaCluster extends ExternalResource {
     effectiveConfig.putAll(brokerConfig);
     effectiveConfig.put(KafkaConfig$.MODULE$.ZkConnectProp(), zookeeper.connectString());
     effectiveConfig.put(KafkaConfig$.MODULE$.ZkSessionTimeoutMsProp(), 30 * 1000);
-    effectiveConfig.put(KafkaConfig$.MODULE$.PortProp(), DEFAULT_BROKER_PORT);
+    effectiveConfig.put(KafkaConfig$.MODULE$.PortProp(), brokerPort);
     effectiveConfig.put(KafkaConfig$.MODULE$.ZkConnectionTimeoutMsProp(), 60 * 1000);
     effectiveConfig.put(KafkaConfig$.MODULE$.DeleteTopicEnableProp(), true);
     effectiveConfig.put(KafkaConfig$.MODULE$.LogCleanerDedupeBufferSizeProp(), 2 * 1024 * 1024L);
@@ -225,6 +243,19 @@ public class EmbeddedSingleNodeKafkaCluster extends ExternalResource {
     }
   }
 
+  /**
+   * Creates a schema for the given subject
+   * 
+   * @param schemaString
+   * @param subject
+   * @return
+   * @throws IOException
+   * @throws RestClientException
+   */
+  public int registerSchema(final String schemaString, final String subject) throws IOException, RestClientException {
+	  return schemaRegistry.restClient.registerSchema(schemaString, subject);
+  }
+  
   /**
    * Deletes multiple topics and blocks until all topics got deleted.
    *
